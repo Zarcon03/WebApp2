@@ -9,6 +9,15 @@ import time
 if "firstload" not in st.session_state:
     st.session_state["firstload"] = True
 
+if "currentcategorydf" not in st.session_state:
+    st.session_state["currentcategorydf"] = pd.DataFrame()
+
+if "objectinstance" not in st.session_state:
+    st.session_state["objectinstance"] = []
+
+if "index" not in st.session_state:
+    st.session_state["index"] = 0
+
 st.title("📦 Category & Item Manager")
 
 
@@ -33,7 +42,7 @@ def firs_load():
         time.sleep(2)
 
         st.session_state["spreadsheet"] = st.session_state["client"].open_by_key(st.session_state["sheetID"]) 
-        st.session_state["CATEGORIE"] = st.session_state["client"].open_by_key(st.session_state["sheetID"]).sheet1
+        st.session_state["CATEGORIE"] = st.session_state["spreadsheet"].worksheet("CATEGORIE")
         
         # Fetch all data from Google Sheets
         categories_data = st.session_state["CATEGORIE"].get_all_records()
@@ -50,36 +59,62 @@ def firs_load():
     
     st.session_state["firstload"] = False
 
-def add_row_to_existing_category(category, item):
-    # Save data to Google Sheets
-    if st.button("Save Item"):
-    
-    
-        if category and item:
-    
-            sheet_to_append = st.session_state["spreadsheet"].worksheet(category)
-            sheet_to_append.append_row([item])
-    
-            if category not in st.session_state["categorieslist"]:
-                st.session_state["CATEGORIE"].append_row([category])  # Append category to first sheet(list of categories)
-                st.session_state["categorieslist"].append(category) 
-    
-            with st.spinner("Updating new data"):
-                time.sleep(3)
-    
-                st.session_state["spreadsheet"] = st.session_state["client"].open_by_key(st.session_state["sheetID"]) 
-                st.session_state["CATEGORIE"] = st.session_state["client"].open_by_key(st.session_state["sheetID"]).sheet1
-    
-                # Fetch all data from Google Sheets
-                categories_data = st.session_state["CATEGORIE"].get_all_records()
-                st.session_state["df"] = pd.DataFrame(categories_data)
-    
-    
-            st.success(f"Added '{item}' to category '{category}'!")
-    
-            st.rerun()  # Refresh page to show updated data
-        else:
-            st.warning("Please enter both category and item.")
+def add_row_to_existing_category(category):
+
+    current_category = f"{category}"
+    st.session_state[current_category] = st.session_state["spreadsheet"].worksheet(current_category)
+    values = st.session_state[current_category].get_all_values()
+    st.session_state["currentcategorydf"] = pd.DataFrame(values[1:], columns=values[0])
+
+    columns = st.session_state["currentcategorydf"].columns.tolist()
+
+    ## STORE THE INSTANCES OF THE OBJECT INTO A LIST
+    if st.session_state["index"] < len(columns):
+        value = st.text_input(f"Insert the value for '{st.session_state["currentcategorydf"].columns[st.session_state["index"]]}' instance")
+        if st.button("Next"):
+            if value:
+                st.session_state["objectinstance"].append(value)
+                st.session_state["index"] += 1
+                
+                st.success("The instance has been succesfully added")
+                st.rerun()
+            else:
+                st.warning("Enter value")
+        
+
+    ## THE LIST IS FULL LOAD AND RESET
+    elif st.session_state["index"] == len(columns):
+        st.toast("All values entered", icon="✅") ## Cool gadget, top right corner appears message for 4 seconds
+
+        ## TIME TO LOAD THE DATA TO THE RIGHT SHEET
+
+        # show saved instances before loading
+        st.subheader("📦 Object to Store")
+        st.table(st.session_state["objectinstance"])
+
+        # define the two cols
+        col1, col2 = st.columns(2)
+        
+        # button to load
+        with col1:
+            if st.button("Save Object"):
+                st.session_state[current_category].append_row(st.session_state["objectinstance"])
+
+                ## RESET THE VALUES OF OBJECTINSTANCE AND INDEX
+                st.session_state["objectinstance"] = []
+                st.session_state["index"] = 0
+
+                with st.spinner("Loading object"):
+                    time.sleep(1)
+                st.rerun()
+        
+        # button to reset
+        with col2:
+            if st.button("Reset Object"):
+                st.session_state["index"] = 0
+                st.session_state["objectinstance"] = []
+
+                st.rerun()
 
 def create_new_category(category):
     if category:
@@ -120,9 +155,7 @@ def create_new_category(category):
                 else:
                     st.session_state["items"].append(item)
 
-
-                    st.write(f"item: {item} has been added")
-                    time.sleep(1)
+                    st.success(f"item: {item} has been added")
                     st.rerun()
             else:
                 st.warning("Please enter an item")
@@ -160,7 +193,7 @@ def create_new_category(category):
                     time.sleep(3)
 
                     st.session_state["spreadsheet"] = st.session_state["client"].open_by_key(st.session_state["sheetID"]) 
-                    st.session_state["CATEGORIE"] = st.session_state["client"].open_by_key(st.session_state["sheetID"]).sheet1
+                    st.session_state["CATEGORIE"] = st.session_state["spreadsheet"].worksheet("CATEGORIE")
 
                     # Fetch all data from Google Sheets
                     categories_data = st.session_state["CATEGORIE"].get_all_records()
@@ -178,28 +211,22 @@ if st.session_state["firstload"] == True:
     firs_load()
 
 
-
 # Category Selection
 selected_category = st.selectbox("Select a category:", st.session_state["categorieslist"])
 
 # Handle new category input
 if selected_category == "➕ Add New Category":
     new_category = st.text_input("Enter new category:")
-    
     create_new_category(new_category)
 
     # Display stored data
     st.subheader("📋 Stored Categories")
     st.dataframe(st.session_state["df"])
-
 else:
-    # Input for new item
-    item = st.text_input("Enter item name:")
 
-    add_item_to_existing_category(selected_category, item)
-    #TODO: modify the above function once creatred the create_new_category()
-
-    #TODO:display the objects of the selected category
-
+    add_row_to_existing_category(selected_category)
+    # Display stored data
+    st.subheader("📋 Stored Objects")
+    st.dataframe(st.session_state["currentcategorydf"])
     
 
