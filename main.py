@@ -21,7 +21,7 @@ if "index" not in st.session_state:
 st.title("📦 Category & Item Manager")
 
 
-def firs_load():
+def first_load():
 
     with st.spinner("Loading google credentials"):
         time.sleep(3)
@@ -118,10 +118,9 @@ def add_row_to_existing_category(category):
 
 def create_new_category(category):
     if category:
-
         if category in st.session_state["categorieslist"]:
             st.warning("The category already exists")
-        ## Initialize the items key
+        
         if "items" not in st.session_state:
             st.session_state["items"] = []
 
@@ -129,13 +128,12 @@ def create_new_category(category):
 
         # Check if Enter was pressed (input changed)
         if item and st.session_state.get("last_item") != item:
-            st.session_state["last_item"] = item  # Store last entered value
-
+            st.session_state["last_item"] = item
             if item in st.session_state["items"]:
                 st.warning(f"The item: {item} has already been added")
             else:
                 st.session_state["items"].append(item)
-                st.write(f"Item: {item} has been added")
+                st.success(f"Item: {item} has been added")
                 time.sleep(1)
                 st.rerun()  # Refresh app to clear input field
 
@@ -146,7 +144,6 @@ def create_new_category(category):
         with col2:
             complete_button = st.button("Complete")
             
-
         ## CREATE THE ACTION CALLS FOR THE TWO BUTTONS
         if add_button:
             if item:
@@ -163,6 +160,8 @@ def create_new_category(category):
         if complete_button:
             if st.session_state["items"] == []:
                 st.warning("You have not entered any item")
+            elif category in st.session_state["categorieslist"]:
+                st.warning("The category is already in the system")
             else:
                 with st.spinner("Loading your new category into the system"):
 
@@ -173,21 +172,22 @@ def create_new_category(category):
 
                         st.session_state["CATEGORIE"].append_row([category])  # Append category to first sheet(list of categories)
                         st.session_state["categorieslist"].append(category)
+                    
 
-                    placeholder = st.empty()  # Create a placeholder for text
+                        placeholder = st.empty()  # Create a placeholder for text
 
-                    # Display entered items inside the placeholder
-                    with placeholder.container():
-                        st.write("### Items entered:")
-                        for i in st.session_state["items"]:
-                            st.write(f"{i}")
+                        # Display entered items inside the placeholder
+                        with placeholder.container():
+                            st.write("### Items entered:")
+                            for i in st.session_state["items"]:
+                                st.write(f"{i}")
 
-                    time.sleep(3)  # Simulate loading time
+                        time.sleep(3)  # Simulate loading time
 
-                    # Clear the placeholder content after spinner ends
-                    placeholder.empty()
+                        # Clear the placeholder content after spinner ends
+                        placeholder.empty()
 
-                    st.session_state["items"] = []
+                        st.session_state["items"] = []
 
                 with st.spinner("Updating new data"):
                     time.sleep(3)
@@ -206,10 +206,8 @@ def create_new_category(category):
         st.warning("Enter the category")
 
 
-
 if st.session_state["firstload"] == True:
-    firs_load()
-
+    first_load()
 
 # Category Selection
 selected_category = st.selectbox("Select a category:", st.session_state["categorieslist"])
@@ -223,10 +221,7 @@ if selected_category == "➕ Add New Category":
     st.subheader("📋 Stored Categories")
     st.dataframe(st.session_state["df"])
 else:
-
     add_row_to_existing_category(selected_category)
     # Display stored data
     st.subheader("📋 Stored Objects")
     st.dataframe(st.session_state["currentcategorydf"])
-    
-
